@@ -2,86 +2,153 @@
 <html lang="en">
 
 <head>
-    <!-- Required meta tags -->
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>Gráfica en Tiempo Real con PHP y Chart.js</title>
+    <title>Dashboard de Estado del Sensor PIR y LED</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <!-- Bootstrap CSS v5.2.1 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
     <style>
-        /* Estilo para controlar el tamaño máximo de los elementos canvas */
-        .canvas-container canvas {
+        body {
+            background-color: #f8f9fa;
+        }
+
+        header {
+            background-color: #79b7f5;
+            padding: 10px;
+            color: white;
+            text-align: center;
+        }
+
+        main {
+            padding: 20px;
+        }
+
+        .card {
+            margin-bottom: 20px;
+        }
+
+        .img-fluid {
             max-width: 100%;
             height: auto;
         }
-        /* Estilo para las tarjetas para asegurar un margen interno */
-        .card {
-            margin: 10px 0;
+
+        .canvas-container {
+            max-width: 100%;
+        }
+
+        /* Nueva clase para hacer que las tarjetas tengan la misma altura */
+        .equal-height-card {
+            height: 100%;
+        }
+
+        /* Nueva clase para ajustar el tamaño de la imagen */
+        .larger-image {
+            width: 300px;
+            height: 300px;
+            object-fit: cover; /* Ajusta la imagen para que cubra el área especificada */
+            border-radius: 50%; /* Hace que la imagen tenga bordes redondeados */
+        }
+
+        /* Estilos para la card de control del LED */
+        .control-panel {
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: background-color 0.5s; /* Añadido para la transición de color */
+        }
+
+        #toggleBtn {
+            display: none;
+        }
+
+        .switch-btn {
+            width: 180px;
+            height: 60px;
+            background: #212659;
+            border: 4px solid #ffffff17;
+            border-radius: 50px;
+            padding: 6px;
+            position: relative;
+            overflow: hidden;
+            margin: 0 auto; /* Centra el botón */
+        }
+
+        .icons {
+            display: flex;
+            align-items: center;
+            height: 100%;
+            user-select: none;
+            color: #17193f;
+            position: relative;
+            z-index: 1;
+        }
+
+        .icons img {
+            width: 40px; /* Ajustado el tamaño de las imágenes */
+            height: 40px;
+            object-fit: cover;
+            border-radius: 50%; /* Añadido para bordes redondeados */
+            transition: transform 0.5s ease, opacity 0.5s ease; /* Añadido para la transición de transformación y opacidad */
+        }
+
+        .icons img:nth-child(2) {
+            transform: translateX(-100%); /* Inicialmente en el borde izquierdo del botón */
+            opacity: 0; /* Oculta la imagen del sol inicialmente */
+        }
+
+        label {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #17193f;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background 0.2s;
+            position: relative;
+        }
+
+        #toggleBtn:checked~.switch-btn label {
+            background: #ffffff;
+        }
+
+        #toggleBtn:checked~.switch-btn .icons img:first-child {
+            transform: translateX(0);
+            opacity: 0; /* Oculta la imagen de la luna al hacer clic */
+        }
+
+        #toggleBtn:checked~.switch-btn .icons img:nth-child(2) {
+            transform: translateX(100%);
+            opacity: 1; /* Muestra la imagen del sol al hacer clic */
         }
     </style>
 </head>
 
 <body>
     <header>
-        <!-- Puedes colocar una barra de navegación aquí -->
+        <h1>Dashboard de Estado del Sensor PIR y LED</h1>
     </header>
-    <main class="text-center mt-4">
-        <h1>Dashboard</h1>
-        <div style="display: flex; flex-wrap: wrap; justify-content: center;">
-            <div style="margin: 4px; width: calc(45rem - 8px);">
+    <main class="container">
+        <div class="card">
+            <div class="card-body">
                 <div class="row">
-                    <div class="">
-                        <div class="card">
-                            <div class="card-body">
-                                <h4 class="card-title text-center">Leds</h4>
-                                <div style="display: flex; justify-content: space-between;">
-                                    <div class="text-center">
-                                        <img src="img/VERDE-OFF.svg" style="width: 50px; height: 50px;" alt="LED Off" class="img-fluid" id="led1">
-                                    </div>
-                                    <div class="text-center">
-                                        <img src="img/AMARILLO-OFF.svg" style="width: 50px; height: 50px;" alt="LED Off" class="img-fluid" id="led2">
-                                    </div>
-                                    <div class="text-center">
-                                        <img src="img/ROJO-OFF.svg" style="width: 50px; height: 50px;" alt="LED Off" class="img-fluid" id="led3">
-                                    </div>
-                                </div>
+                    <div class="col-md-6">
+                        <div class="card equal-height-card">
+                            <div class="card-body text-center">
+                                <h4 class="card-title">Movimientos</h4>
+                                <!-- Aplicar la clase "larger-image" para ajustar el tamaño de la imagen -->
+                                <img src="img/sin_movimiento.svg" class="larger-image" alt="sin_movimiento" id="pirr1">
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="row">
-                    <div class="">
-                        <div class="card">
+
+                    <div class="col-md-6">
+                        <div class="card equal-height-card">
                             <div class="card-body canvas-container">
-                                <h4 class="card-title">Sensor Ultrasonico</h4>
-                                <canvas id="sensorUltrasonico"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div style="margin: 4px; width: calc(45rem - 8px);">
-                <div class="row">
-                    <div class="">
-                        <div class="card">
-                            <div class="card-body">
-                                <h4 class="card-title text-center">Movimientos</h4>
-                                <div class="row">
-                                    <div style="display: flex; flex-direction: column; align-items: center;">
-                                        <img src="img/sin_movimiento.svg" style="width: 50px; height: 50px;" alt="sin_movimiento" class="img-fluid" id="pirr1">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div>
-                    <div class="">
-                        <div class="card">
-                            <div class="card-body canvas-container">
-                                <h4 class="card-title">Sensor Pir</h4>
+                                <h4 class="card-title">Sensor PIR</h4>
                                 <canvas id="sensorPir"></canvas>
                             </div>
                         </div>
@@ -89,11 +156,22 @@
                 </div>
             </div>
         </div>
+
+        <!-- Nueva tarjeta -->
+        <div class="card control-panel" id="control-panel">
+            <div class="card-body">
+                <h2>Control del LED</h2>
+                <input type="checkbox" id="toggleBtn" />
+                <div class="switch-btn">
+                    <label for="toggleBtn" class="icons">
+                        <img src="./img/moon-icon.png" alt="moon" />
+                        <img src="./img/sun-icon.png" alt="sun" />
+                    </label>
+                </div>
+            </div>
+        </div>
     </main>
-    <footer>
-        <!-- Puedes colocar un pie de página aquí -->
-    </footer>
-    <!-- Bootstrap JavaScript Libraries -->
+
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
         integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
         crossorigin="anonymous"></script>

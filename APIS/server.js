@@ -8,11 +8,13 @@ app.use(
   cors()
 );
 
+
+
 // Asegúrate de que estos son los detalles correctos para conectarte a tu base de datos MySQL
 const conexion = mysql.createConnection({
   host: 'localhost',
   user: 'root',
-  password: 'root',
+  password: '',
   database: 'sm52_arduino' // Este debe ser el nombre de tu base de datos
 });
 
@@ -94,6 +96,23 @@ app.get('/obtenerDeteccionBetween', (req, res) => {
 });
 
 app.get('/favicon.ico', (req, res) => res.status(204).end());
+
+
+app.post("/api/crearestadoled", (req, res) => { // Cambia la ruta a '/api/crearestadoled'
+  const { activar } = req.body;
+
+  const sql = "INSERT INTO led_control (estatus) VALUES (?)";
+  conexion.query(sql, [activar], (err, result) => {
+    if (err) {
+      console.error("Error al insertar el registro en la base de datos:", err);
+      res.status(500).json({ error: "Error interno del servidor" });
+    } else {
+      console.log("Registro insertado correctamente en la base de datos");
+      res.json({ success: true });
+    }
+  });
+});
+
 
 app.listen(8082, () => {
   console.log("Servidor en el puerto 8082");

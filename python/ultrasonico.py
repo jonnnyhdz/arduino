@@ -1,72 +1,68 @@
-import serial
-import mysql.connector
+# pip install websockets mysql-connector-python
+# Ejecutar con Python 3.7 o superior
 
-# Configuración de la conexión a la base de datos MySQL
+import asyncio
+import websockets
+import mysql.connector
+import serial
+
+# Configuración de la base de datos
 db_config = {
-    'host': "localhost",
-    'user': "root",
-    'password': "root",
-    'database': "sm52_arduino"
+    'host': 'localhost',
+    'user': 'root',
+    'password': '',
+    'database': 'sm52_arduino'
 }
 
-try:
-    # Intentar conectar a la base de datos
-    db = mysql.connector.connect(**db_config)
-    cursor = db.cursor()
-except mysql.connector.Error as err:
-    print(f"Error al conectar a MySQL: {err}")
-    exit(1)
+# Configura el puerto serial según tu configuración de Arduino
+arduino_serial = serial.Serial('COM6', 9600, timeout=1)
 
-try:
-    # Abrir conexión serial
-    arduino = serial.Serial('/dev/cu.usbserial-14230', 9600, timeout=1)  # Ajusta esto al puerto correcto
-
-    while True:
-        data = arduino.readline().decode().strip()
-        if data:
-            datos_separados = data.split(',')
-            if len(datos_separados) == 2:  # Asegurarse de que hay dos datos
-                distancia = int(datos_separados[0])  # Convertir la distancia a entero
-                dato_sensor = int(datos_separados[1])  # Convertir la PIR a entero
-                mensaje = "Dato recibido"  # Definir un mensaje básico
-
-                # Determinar el color del LED basado en la distancia
-                if distancia < 10:
-                    led_color = 'rojo'
-                    arduino.write(b'R')  # Enviar comando para LED Rojo
-                elif distancia < 20:
-                    led_color = 'amarillo'
-                    arduino.write(b'A')  # Enviar comando para LED Amarillo
-                else:
-                    led_color = 'verde'
-                    arduino.write(b'V')  # Enviar comando para LED Verde
-
-                # Determinar el estado basado en la detección de movimiento
-                estado_movimiento = 'movimiento' if dato_sensor else 'sin_movimiento'
-                arduino.write(b'M' if dato_sensor else b'N')
-
-                # Insertar los datos en la base de datos MySQL para la primera tabla
-                sql = "INSERT INTO tb_puerto_serial (mensaje, distancia, led_color, fecha) VALUES (%s, %s, %s, NOW())"
-                cursor.execute(sql, (mensaje, distancia, led_color))
-
-                # Insertar los datos en la base de datos MySQL para la segunda tabla
-                sql2 = "INSERT INTO detecciones (mensaje, dato_sensor, hora, color_led) VALUES (%s, %s, NOW(), %s)"
-                cursor.execute(sql2, (mensaje, dato_sensor, estado_movimiento))
-
-                db.commit()
-
-                print(f"Distancia: {distancia} cm, LED: {led_color}, Movimiento: {dato_sensor}, Estado: {estado_movimiento}")
-
-except KeyboardInterrupt:
-    print("Programa terminado por el usuario")
-except serial.SerialException as e:
-    print(f"Error al interactuar con el puerto serial: {e}")
-except mysql.connector.Error as err:
-    print(f"Error al interactuar con MySQL: {err}")
-finally:
-    # Cerrar conexiones
-    if 'db' in locals() and db.is_connected():
+def update_led_status_in_db(status):
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE estado_led SET led_status = %s WHERE id_estado_led = 1", (status,))
+        conn.commit()
+    except mysql.connector.Error as e:
+        print(f"Error de base de datos: {e}")
+    finally:
         cursor.close()
-        db.close()
-    if 'arduino' in locals() and arduino.is_open:
-        arduino.close()
+        conn.close()
+
+def get_led_status_from_db():
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+        cursor.execute("SELECT led_status FROM estado_led WHERE id_estado_led = 1")
+        status = cursor.fetchone()[0]
+        return status
+    except mysql.connector.Error as e:
+        print(f"Error de base de datos: {e}")
+        return None
+    finally:
+        cursor.close()
+        conn.close()
+
+async def handle_led(websocket, path):
+    status = get_led_status_from_db()
+    await websocket.send(str(status))  # Enviar estado actual al cliente al conectarse
+    async for message in websocket:
+        if message in ["1", "0"]:
+            update_led_status_in_db(message)
+            arduino_serial.write(message.encode())
+            await websocket.send(message)  # Opcional: Confirmar el cambio al cliente
+
+async def start_server():
+    server = await websockets.serve(handle_led, "localhost", 8766)
+    print("Servidor WebSocket iniciado en ws://localhost:8766")
+
+    try:
+        # Ejecutar el servidor indefinidamente
+        await server.wait_closed()
+    except KeyboardInterrupt:
+        # Cerrar el servidor al recibir una señal de interrupción (Ctrl+C)
+        server.close()
+        await server.wait_closed()
+
+if __name__ == "__main__":
+    asyncio.run(start_server())
